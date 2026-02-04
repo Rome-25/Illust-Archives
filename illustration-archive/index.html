@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>イラストアーカイブ v1.4.2‑Merge</title>
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<!-- 外部CSS -->
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<h1>イラストアーカイブ v1.4.2‑Merge</h1>
+
+<div class="tab-bar">
+  <button id="tabMain" class="tab-btn active">画像一覧</button>
+  <button id="tabTags" class="tab-btn">タグ管理</button>
+</div>
+
+<!-- 画像一覧タブ -->
+<div id="mainSection">
+
+  <div class="input-column">
+    <input type="file" id="imageInput" accept="image/*">
+    <input type="text" id="urlInput" placeholder="元ツイートURL">
+    <input type="text" id="authorInput" placeholder="作者名">
+    <input type="text" id="tagInput" placeholder="タグ（カンマ区切り）">
+
+    <button id="addBtn">追加</button>
+  </div>
+
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+    <select id="sortSelect">
+      <option value="dateDesc">作成日時：降順（新しい → 古い）</option>
+      <option value="dateAsc">作成日時：昇順（古い → 新しい）</option>
+      <option value="fav">お気に入り優先</option>
+    </select>
+
+    <button id="dataBtn" class="btn-sm">データ管理</button>
+  </div>
+
+  <div class="tag-header">
+    <span>最近使ったタグ</span>
+    <button id="toggleAllTagsBtn" class="btn-sm">タグ一覧 ▼</button>
+  </div>
+  <div id="recentTags" class="tag-area"></div>
+  <div id="allTags" class="tag-area-all"></div>
+
+  <h3>一覧</h3>
+  <div id="list"></div>
+</div>
+
+<!-- タグ管理タブ -->
+<div id="tagManageSection" style="display:none;">
+  <div class="section-block">
+    <div class="section-title">分類一覧</div>
+    <div style="display:flex; gap:6px; margin-bottom:6px;">
+      <input type="text" id="newCategoryName" placeholder="分類名（例：作品）" style="flex:1;">
+      <input type="color" id="newCategoryColor" value="#4da3ff">
+      <button class="btn-sm" id="addCategoryBtn">追加</button>
+    </div>
+    <div id="categoryList"></div>
+  </div>
+
+  <div class="section-block">
+    <div class="section-title">タグと分類・優先度</div>
+    <div id="tagManageList"></div>
+  </div>
+</div>
+
+<!-- モーダル -->
+<div id="modal">
+  <div id="modalContent">
+
+    <div id="modalTopBar">
+      <div id="modalTopBar-left">
+        <button class="modal-close-btn" id="modalCloseBtn">×</button>
+        <button id="modeViewBtn" class="modal-mode-btn active">閲覧</button>
+        <button id="modeEditBtn" class="modal-mode-btn">編集</button>
+      </div>
+      <div id="modalTopBar-right">
+        <span>⭐</span>
+        <button id="favBtn" class="btn-sm"></button>
+        <button id="openUrlBtn" class="btn-sm">元ツイート</button>
+        <button id="deleteBtn" class="btn-sm">削除</button>
+      </div>
+    </div>
+
+    <div id="modalMain">
+      <div id="modalImageWrapper">
+        <img id="modalImage">
+      </div>
+
+      <div id="modalInfo">
+        <!-- 閲覧モード -->
+        <div id="viewMode">
+          <div class="modal-section">
+            <div>作者: <span id="viewAuthor" style="text-decoration:underline; cursor:pointer;"></span></div>
+            <div>URL: <a id="viewUrl" href="#" target="_blank" style="color:#8cf;"></a></div>
+          </div>
+
+          <div class="modal-section">
+            <label>状態タグ</label>
+            <select id="stateSelect">
+              <option value="">状態なし</option>
+              <option value="完成">完成</option>
+              <option value="塗り">塗り</option>
+              <option value="線画">線画</option>
+              <option value="ラフ">ラフ</option>
+              <option value="構想">構想</option>
+            </select>
+          </div>
+
+          <div class="modal-section">
+            <div>タグ</div>
+            <div id="modalTagsView"></div>
+          </div>
+        </div>
+
+        <!-- 編集モード -->
+        <div id="editMode" style="display:none;">
+          <div class="modal-section">
+            <label>元ツイートURL</label><br>
+            <input type="text" id="editUrl" style="width:100%;">
+          </div>
+          <div class="modal-section">
+            <label>作者名</label><br>
+            <input type="text" id="editAuthor" style="width:100%;">
+          </div>
+          <div class="modal-section">
+            <label>状態タグ</label><br>
+            <select id="editStateSelect">
+              <option value="">状態なし</option>
+              <option value="完成">完成</option>
+              <option value="塗り">塗り</option>
+              <option value="線画">線画</option>
+              <option value="ラフ">ラフ</option>
+              <option value="構想">構想</option>
+            </select>
+          </div>
+          <div class="modal-section">
+            <label>タグ</label>
+            <div id="modalTagsEdit"></div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <input type="text" id="modalTagInput" placeholder="Enterでタグ追加" style="flex:1;">
+              <button class="btn-sm" id="openTagSelectBtn">一覧から選択</button>
+            </div>
+          </div>
+          <div class="modal-section">
+            <label>画像差し替え</label><br>
+            <input type="file" id="replaceImageInput" accept="image/*">
+          </div>
+          <div class="modal-section" style="text-align:right;">
+            <button class="btn-sm" id="cancelEditBtn">キャンセル</button>
+            <button class="btn-sm" id="saveEditBtn">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- タグ/作者選択モーダル -->
+<div id="tagSelectModal">
+  <div id="tagSelectContent">
+    <div id="tagSelectHeader">
+      <span style="font-weight:600;">タグ / 作者を選択</span>
+    </div>
+
+    <div style="display:flex; gap:4px; margin-bottom:4px; flex-wrap:wrap;">
+      <select id="tagSelectMode" style="flex:1;">
+        <option value="tag">タグ</option>
+        <option value="author">作者</option>
+      </select>
+      <select id="tagSelectSort" style="flex:1;">
+        <option value="priority">優先度：降順</option>
+        <option value="name">名前：昇順</option>
+        <option value="recent">最近使った順</option>
+      </select>
+    </div>
+
+    <input type="text" id="tagSelectSearch" placeholder="検索" style="width:100%; margin-bottom:4px;">
+
+    <div id="tagSelectList"></div>
+
+    <div id="tagSelectFooter">
+      <button class="btn-sm" id="tagSelectCancelBtn">キャンセル</button>
+      <button class="btn-sm" id="tagSelectApplyBtn">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- データ管理モーダル -->
+<div id="dataModal">
+  <div id="dataModalContent">
+    <div style="font-weight:600; margin-bottom:6px;">データ管理</div>
+    <div style="font-size:12px; margin-bottom:8px;">
+      この端末のデータをJSONとしてエクスポート / インポートできます。<br>
+      PCとiPhone間のデータ移動にも使えます。
+    </div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <button id="exportBtn" class="btn-sm">エクスポート</button>
+      <button id="importBtn" class="btn-sm">インポート（上書き / マージ）</button>
+      <input type="file" id="importInput" accept="application/json" style="display:none;">
+    </div>
+    <div id="dataModalFooter">
+      <button id="dataModalCloseBtn" class="btn-sm">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 外部JS -->
+<script src="js/app.js"></script>
+<script src="js/modal.js"></script>
+<script src="js/tags.js"></script>
+<script src="js/data.js"></script>
+
+</body>
+</html>
