@@ -1,14 +1,53 @@
 /* ============================
-   モーダル開閉
+   要素参照（最上部に集約）
 ============================ */
 const modal = document.getElementById("modal");
 const modalImage = document.getElementById("modalImage");
+const zoomResetBtn = document.getElementById("zoomResetBtn");
 const modalCloseBtn = document.getElementById("modalCloseBtn");
 
+const modeViewBtn = document.getElementById("modeViewBtn");
+const modeEditBtn = document.getElementById("modeEditBtn");
+const viewModeDiv = document.getElementById("viewMode");
+const editModeDiv = document.getElementById("editMode");
+
+const favBtn = document.getElementById("favBtn");
+const stateSelect = document.getElementById("stateSelect");
+const editStateSelect = document.getElementById("editStateSelect");
+
+const openUrlBtn = document.getElementById("openUrlBtn");
+const deleteBtn = document.getElementById("deleteBtn");
+
+const viewAuthorSpan = document.getElementById("viewAuthor");
+const viewUrlLink = document.getElementById("viewUrl");
+
+const modalTagsViewDiv = document.getElementById("modalTagsView");
+const modalTagsEditDiv = document.getElementById("modalTagsEdit");
+const modalTagInput = document.getElementById("modalTagInput");
+
+const editUrlInput = document.getElementById("editUrl");
+const editAuthorInput = document.getElementById("editAuthor");
+const replaceImageInput = document.getElementById("replaceImageInput");
+const cancelEditBtn = document.getElementById("cancelEditBtn");
+const saveEditBtn = document.getElementById("saveEditBtn");
+
+/* ============================
+   モーダル開閉
+============================ */
 modalCloseBtn.onclick = () => {
   modal.style.display = "none";
   currentItem = null;
 };
+
+/* ---- ズームリセット（存在チェック付き） ---- */
+if (zoomResetBtn) {
+  zoomResetBtn.onclick = () => {
+    scale = 1;
+    posX = 0;
+    posY = 0;
+    applyTransform();
+  };
+}
 
 function openModal(item) {
   currentItem = JSON.parse(JSON.stringify(item));
@@ -44,11 +83,6 @@ function openModal(item) {
 /* ============================
    閲覧 / 編集モード切り替え
 ============================ */
-const modeViewBtn = document.getElementById("modeViewBtn");
-const modeEditBtn = document.getElementById("modeEditBtn");
-const viewModeDiv = document.getElementById("viewMode");
-const editModeDiv = document.getElementById("editMode");
-
 function setModalMode(mode) {
   modalMode = mode;
   if (mode === "view") {
@@ -58,7 +92,7 @@ function setModalMode(mode) {
     editModeDiv.style.display = "none";
   } else {
     modeEditBtn.classList.add("active");
-    modeViewBtn.classList.remove("active");
+    modeViewDiv.classList.remove("active");
     viewModeDiv.style.display = "none";
     editModeDiv.style.display = "";
   }
@@ -68,20 +102,25 @@ modeViewBtn.onclick = () => setModalMode("view");
 modeEditBtn.onclick = () => setModalMode("edit");
 
 /* ============================
-   画像ズーム・ドラッグ
+   画像ズーム（PC + iOS）
 ============================ */
 let scale = 1, posX = 0, posY = 0;
 let startX = 0, startY = 0;
 let isDragging = false;
+
+function applyTransform() {
+  modalImage.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
+}
 
 function setupModalImage(src) {
   modalImage.src = src;
   scale = 1;
   posX = 0;
   posY = 0;
-  modalImage.style.transform = "translate(0px,0px) scale(1)";
+  applyTransform();
 }
 
+/* ---- PCドラッグ ---- */
 modalImage.onmousedown = e => {
   e.preventDefault();
   isDragging = true;
@@ -94,7 +133,7 @@ document.onmousemove = e => {
   if (!isDragging) return;
   posX = e.clientX - startX;
   posY = e.clientY - startY;
-  modalImage.style.transform = `translate(${posX}px,${posY}px) scale(${scale})`;
+  applyTransform();
 };
 
 document.onmouseup = () => {
@@ -102,11 +141,68 @@ document.onmouseup = () => {
   modalImage.style.cursor = "grab";
 };
 
-modalImage.ondblclick = () => {
-  scale = (scale === 1 ? 2 : 1);
-  modalImage.style.transform = `translate(${posX}px,${posY}px) scale(${scale})`;
-};
+/* ---- ダブルタップ（位置基準） ---- */
+let lastTap = 0;
+modalImage.addEventListener("touchend", e => {
+  const now = Date.now();
+  if (now - lastTap < 250) {
+    const t = e.changedTouches[0];
+    const rect = modalImage.getBoundingClientRect();
 
+    const tapX = t.clientX - rect.left;
+    const tapY = t.clientY - rect.top;
+
+    const newScale = scale * 1.8;
+
+    posX -= (tapX - posX) * (newScale / scale - 1);
+    posY -= (tapY - posY) * (newScale / scale - 1);
+
+    scale = newScale;
+    applyTransform();
+  }
+  lastTap = now;
+});
+
+/* ---- ピンチズーム（iOS対応） ---- */
+let lastDist = 0;
+let lastCenter = { x: 0, y: 0 };
+
+modalImage.addEventListener("touchstart", e => {
+  if (e.touches.length === 2) {
+    const [t1, t2] = e.touches;
+    lastDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    lastCenter = {
+      x: (t1.clientX + t2.clientX) / 2,
+      y: (t1.clientY + t2.clientY) / 2
+    };
+  }
+});
+
+modalImage.addEventListener("touchmove", e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+
+    const [t1, t2] = e.touches;
+    const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    const center = {
+      x: (t1.clientX + t2.clientX) / 2,
+      y: (t1.clientY + t2.clientY) / 2
+    };
+
+    const deltaScale = dist / lastDist;
+    scale *= deltaScale;
+
+    posX += (center.x - lastCenter.x) * (1 - 1 / deltaScale);
+    posY += (center.y - lastCenter.y) * (1 - 1 / deltaScale);
+
+    lastDist = dist;
+    lastCenter = center;
+
+    applyTransform();
+  }
+}, { passive: false });
+
+/* ---- ホイールズーム ---- */
 window.addEventListener("wheel", e => {
   if (modal.style.display !== "flex") return;
   if (e.ctrlKey) e.preventDefault();
@@ -118,14 +214,12 @@ window.addEventListener("wheel", e => {
   else scale /= zoomFactor;
 
   scale = Math.max(0.2, Math.min(scale, 8));
-  modalImage.style.transform = `translate(${posX}px,${posY}px) scale(${scale})`;
+  applyTransform();
 }, { passive: false });
 
 /* ============================
    お気に入り
 ============================ */
-const favBtn = document.getElementById("favBtn");
-
 favBtn.onclick = () => {
   if (!currentItem) return;
   const original = items.find(i => i.id === currentItem.id);
@@ -139,11 +233,8 @@ favBtn.onclick = () => {
 };
 
 /* ============================
-   状態タグ（閲覧）
+   状態タグ
 ============================ */
-const stateSelect = document.getElementById("stateSelect");
-const editStateSelect = document.getElementById("editStateSelect");
-
 stateSelect.onchange = () => {
   if (!currentItem) return;
   const original = items.find(i => i.id === currentItem.id);
@@ -156,7 +247,6 @@ stateSelect.onchange = () => {
   render();
 };
 
-/* 編集モード側 */
 editStateSelect.onchange = () => {
   if (!currentItem) return;
   currentItem.state = editStateSelect.value;
@@ -165,8 +255,6 @@ editStateSelect.onchange = () => {
 /* ============================
    URLボタン
 ============================ */
-const openUrlBtn = document.getElementById("openUrlBtn");
-
 openUrlBtn.onclick = () => {
   if (currentItem && currentItem.url) {
     window.open(currentItem.url, "_blank");
@@ -176,8 +264,6 @@ openUrlBtn.onclick = () => {
 /* ============================
    削除
 ============================ */
-const deleteBtn = document.getElementById("deleteBtn");
-
 deleteBtn.onclick = () => {
   if (!currentItem) return;
   if (confirm("削除する？")) {
@@ -191,8 +277,6 @@ deleteBtn.onclick = () => {
 /* ============================
    作者クリックで絞り込み
 ============================ */
-const viewAuthorSpan = document.getElementById("viewAuthor");
-
 viewAuthorSpan.onclick = () => {
   if (!currentItem) return;
   if (!currentItem.author) return;
@@ -207,24 +291,23 @@ viewAuthorSpan.onclick = () => {
 /* ============================
    タグ（閲覧モード）
 ============================ */
-const modalTagsViewDiv = document.getElementById("modalTagsView");
-
 function renderModalTagsView() {
-  if (!modalTagsViewDiv) return;
   modalTagsViewDiv.innerHTML = "";
   if (!currentItem || !currentItem.tags) return;
 
-  currentItem.tags.forEach(t => {
+  currentItem.tags.forEach(tagName => {
     const span = document.createElement("span");
     span.className = "tag";
 
-    const meta = getTagMeta(t);
+    const meta = getTagMeta(tagName);
+
     if (meta.category) {
-      span.classList.add("colored");
       span.style.backgroundColor = meta.category.color;
+    } else {
+      span.style.backgroundColor = "rgba(0,0,0,0.15)";
     }
 
-    span.textContent = t;
+    span.textContent = tagName;
     modalTagsViewDiv.appendChild(span);
   });
 }
@@ -232,27 +315,25 @@ function renderModalTagsView() {
 /* ============================
    タグ（編集モード）
 ============================ */
-const modalTagsEditDiv = document.getElementById("modalTagsEdit");
-const modalTagInput = document.getElementById("modalTagInput");
-
 function renderModalTagsEdit() {
-  if (!modalTagsEditDiv) return;
   modalTagsEditDiv.innerHTML = "";
   if (!currentItem || !currentItem.tags) return;
 
-  currentItem.tags.forEach(t => {
+  currentItem.tags.forEach(tagName => {
     const span = document.createElement("span");
     span.className = "tag";
 
-    const meta = getTagMeta(t);
+    const meta = getTagMeta(tagName);
+
     if (meta.category) {
-      span.classList.add("colored");
       span.style.backgroundColor = meta.category.color;
+    } else {
+      span.style.backgroundColor = "rgba(0,0,0,0.15)";
     }
 
-    span.textContent = t + " ×";
+    span.textContent = tagName + " ×";
     span.onclick = () => {
-      currentItem.tags = currentItem.tags.filter(x => x !== t);
+      currentItem.tags = currentItem.tags.filter(x => x !== tagName);
       renderModalTagsEdit();
     };
 
@@ -260,7 +341,6 @@ function renderModalTagsEdit() {
   });
 }
 
-/* 手入力でタグ追加 */
 modalTagInput.onkeydown = e => {
   if (e.key === "Enter") {
     if (!currentItem) return;
@@ -277,12 +357,6 @@ modalTagInput.onkeydown = e => {
 /* ============================
    編集保存
 ============================ */
-const editUrlInput = document.getElementById("editUrl");
-const editAuthorInput = document.getElementById("editAuthor");
-const replaceImageInput = document.getElementById("replaceImageInput");
-const cancelEditBtn = document.getElementById("cancelEditBtn");
-const saveEditBtn = document.getElementById("saveEditBtn");
-
 cancelEditBtn.onclick = () => {
   if (!currentItem) return;
   openModal(items.find(i => i.id === currentItem.id));
