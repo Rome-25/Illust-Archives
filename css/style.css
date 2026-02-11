@@ -1,399 +1,228 @@
-html, body {
-  height: 100%;
-  overscroll-behavior: none;
-}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>イラストアーカイブ v1.4.2‑Merge</title>
 
-body {
-  font-family: system-ui, sans-serif;
-  margin: 16px;
-}
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
 
-h1 {
-  font-size: 20px;
-  margin-bottom: 10px;
-}
+<!-- 外部CSS -->
+<link rel="stylesheet" href="css/style.css">
+</head>
 
-button {
-  cursor: pointer;
-}
+<body>
 
-/* タブ */
-.tab-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
+<h1>イラストアーカイブ v1.4.2‑Merge</h1>
 
-.tab-btn {
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background: #f5f5f5;
-}
+<div class="tab-bar">
+  <button id="tabMain" class="tab-btn active">画像一覧</button>
+  <button id="tabTags" class="tab-btn">タグ管理</button>
+</div>
 
-.tab-btn.active {
-  background: #ddd;
-  font-weight: 600;
-}
+<!-- 画像一覧タブ -->
+<div id="mainSection">
 
-/* 入力欄縦並び */
-.input-column {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
+  <div class="input-column">
+    <input type="file" id="imageInput" accept="image/*">
+    <input type="text" id="urlInput" placeholder="元ツイートURL">
+    <input type="text" id="authorInput" placeholder="作者名">
+    <input type="text" id="tagInput" placeholder="タグ（カンマ区切り）">
 
-.input-column input,
-.input-column select,
-.input-column button {
-  width: 100%;
-  box-sizing: border-box;
-}
+    <button id="addBtn">追加</button>
+  </div>
 
-/* 最近使ったタグ + 全タグ */
-.tag-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 8px 0 4px;
-}
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+    <select id="sortSelect">
+      <option value="dateDesc">作成日時：降順（新しい → 古い）</option>
+      <option value="dateAsc">作成日時：昇順（古い → 新しい）</option>
+      <option value="fav">お気に入り優先</option>
+    </select>
 
-.tag-area {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  max-height: 80px;
-  overflow-y: auto;
-}
+    <button id="dataBtn" class="btn-sm">データ管理</button>
+  </div>
 
-.tag-area-all {
-  display: none;
-  flex-wrap: wrap;
-  gap: 4px;
-  max-height: 120px;
-  overflow-y: auto;
-  margin-top: 4px;
-}
+<button id="scrollTopBtn">▲</button>
+<button id="scrollBottomBtn">▼</button>
 
-/* 一覧 */
-#list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 8px;
-}
+  <div class="tag-header">
+    <span>最近使ったタグ</span>
+    <button id="toggleAllTagsBtn" class="btn-sm">タグ一覧 ▼</button>
+  </div>
+  <div id="recentTags" class="tag-area"></div>
+  <div id="allTags" class="tag-area-all"></div>
 
-.card {
-  position: relative;
-  padding-bottom: 4px;
-}
+  <h3>一覧</h3>
+  <div id="list"></div>
+</div>
 
-.card img {
-  width: 100%;
-  display: block;
-  cursor: pointer;
-}
+<!-- タグ管理タブ -->
 
-.author {
-  font-size: 10px;
-  line-height: 1.1;
-  opacity: 0.7;
-  margin-top: 1px;
-}
+<div id="tagManageSection" style="display:none;">
+  <div class="section-block">
+    <div class="section-title">分類一覧</div>
+    <div style="display:flex; gap:6px; margin-bottom:6px;">
+      <input type="text" id="newCategoryName" placeholder="分類名（例：作品）" style="flex:1;">
+      <input type="color" id="newCategoryColor" value="#4da3ff">
+      <button class="btn-sm" id="addCategoryBtn">追加</button>
+    </div>
+    <div id="categoryList"></div>
+  </div>
 
-/* タグの見た目（統一） */
-.tag {
-  font-size: 11px;
-  padding: 2px 6px;
-  border: 1px solid #888;
-  border-radius: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
+  <div class="section-block">
+    <div class="section-title">タグと分類・優先度</div>
+    <div id="tagManageList"></div>
+  </div>
+</div>
 
-.tag.active {
-  outline: 2px solid #333;
-}
+<!-- モーダル -->
+<div id="modal">
+  <div id="modalContent">
 
-/* 色つきタグ */
-.tag.colored {
-  color: #000;
-  border-color: transparent;
-}
+    <div id="modalTopBar">
+      <div id="modalTopBar-left">
+        <button class="modal-close-btn" id="modalCloseBtn">×</button>
+        <button id="modeViewBtn" class="modal-mode-btn active">閲覧</button>
+        <button id="modeEditBtn" class="modal-mode-btn">編集</button>
+      </div>
+      <div id="modalTopBar-right">
+        <span>⭐</span>
+        <button id="favBtn" class="btn-sm"></button>
+        <button id="openUrlBtn" class="btn-sm">元ツイート</button>
+        <button id="deleteBtn" class="btn-sm">削除</button>
+      </div>
+    </div>
 
-/* モーダル全画面 */
-#modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.9);
-  justify-content: center;
-  align-items: center;
-  z-index: 999;
-}
+    <div id="modalMain">
+     <div id="modalImageWrapper">
+ 	 <img id="modalImage">
+  	 <button id="zoomResetBtn">リセット</button>
+	</div>
 
-#modalContent {
-  position: relative;
-  width: 100vw;
-  height: 100dvh;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
+      <div id="modalInfo">
+        <!-- 閲覧モード -->
+        <div id="viewMode">
+          <div class="modal-section">
+            <div>作者: <span id="viewAuthor" style="text-decoration:underline; cursor:pointer;"></span></div>
+            <div>URL: <a id="viewUrl" href="#" target="_blank" style="color:#8cf;"></a></div>
+          </div>
 
-/* モーダル上部バー */
-#modalTopBar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  background: rgba(0,0,0,0.8);
-  z-index: 2;
-}
+          <div class="modal-section">
+            <label>状態タグ</label>
+            <select id="stateSelect">
+              <option value="">状態なし</option>
+              <option value="完成">完成</option>
+              <option value="塗り">塗り</option>
+              <option value="線画">線画</option>
+              <option value="ラフ">ラフ</option>
+              <option value="構想">構想</option>
+            </select>
+          </div>
 
-#modalTopBar-left {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
+          <div class="modal-section">
+            <div>タグ</div>
+            <div id="modalTagsView"></div>
+          </div>
+        </div>
 
-#modalTopBar-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
+        <!-- 編集モード -->
+        <div id="editMode" style="display:none;">
+          <div class="modal-section">
+            <label>元ツイートURL</label><br>
+            <input type="text" id="editUrl" style="width:100%;">
+          </div>
+          <div class="modal-section">
+            <label>作者名</label><br>
+            <input type="text" id="editAuthor" style="width:100%;">
+          </div>
+          <div class="modal-section">
+            <label>状態タグ</label><br>
+            <select id="editStateSelect">
+              <option value="">状態なし</option>
+              <option value="完成">完成</option>
+              <option value="塗り">塗り</option>
+              <option value="線画">線画</option>
+              <option value="ラフ">ラフ</option>
+              <option value="構想">構想</option>
+            </select>
+          </div>
+          <div class="modal-section">
+            <label>タグ</label>
+            <div id="modalTagsEdit"></div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <input type="text" id="modalTagInput" placeholder="Enterでタグ追加" style="flex:1;">
+              <button class="btn-sm" id="openTagSelectBtn">一覧から選択</button>
+            </div>
+          </div>
+          <div class="modal-section">
+            <label>画像差し替え</label><br>
+            <input type="file" id="replaceImageInput" accept="image/*">
+          </div>
+          <div class="modal-section" style="text-align:right;">
+            <button class="btn-sm" id="cancelEditBtn">キャンセル</button>
+            <button class="btn-sm" id="saveEditBtn">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-/* 閉じるボタン */
-.modal-close-btn {
-  border: none;
-  background: #333;
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
+  </div>
+</div>
 
-/* 閲覧 / 編集タブ */
-.modal-mode-btn {
-  border-radius: 4px;
-  border: 1px solid #555;
-  background: #222;
-  color: #fff;
-  padding: 2px 8px;
-  font-size: 12px;
-}
+<!-- タグ/作者選択モーダル -->
+<div id="tagSelectModal">
+  <div id="tagSelectContent">
+    <div id="tagSelectHeader">
+      <span style="font-weight:600;">タグ / 作者を選択</span>
+    </div>
 
-.modal-mode-btn.active {
-  background: #fff;
-  color: #000;
-}
+    <div style="display:flex; gap:4px; margin-bottom:4px; flex-wrap:wrap;">
+      <select id="tagSelectMode" style="flex:1;">
+        <option value="tag">タグ</option>
+        <option value="author">作者</option>
+      </select>
+      <select id="tagSelectSort" style="flex:1;">
+        <option value="priority">優先度：降順</option>
+        <option value="name">名前：昇順</option>
+        <option value="recent">最近使った順</option>
+      </select>
+    </div>
 
-/* モーダルメイン領域 */
-#modalMain {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
+    <input type="text" id="tagSelectSearch" placeholder="検索" style="width:100%; margin-bottom:4px;">
 
-/* 画像エリア */
-#modalImageWrapper {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-}
+    <div id="tagSelectList"></div>
 
-#modalImage {
-  display: block;
-  max-width: 95vw;
-  max-height: 95vh;
-  cursor: grab;
-  user-select: none;
-  transform-origin: center center;
-}
+    <div id="tagSelectFooter">
+      <button class="btn-sm" id="tagSelectCancelBtn">キャンセル</button>
+      <button class="btn-sm" id="tagSelectApplyBtn">追加</button>
+    </div>
+  </div>
+</div>
 
-/* 下部情報エリア */
-#modalInfo {
-  max-height: 40%;
-  overflow-y: auto;
-  padding: 8px;
-  background: rgba(0,0,0,0.8);
-  font-size: 13px;
-}
+<!-- データ管理モーダル -->
+<div id="dataModal">
+  <div id="dataModalContent">
+    <div style="font-weight:600; margin-bottom:6px;">データ管理</div>
+    <div style="font-size:12px; margin-bottom:8px;">
+      この端末のデータをJSONとしてエクスポート / インポートできます。<br>
+      PCとiPhone間のデータ移動にも使えます。
+    </div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <button id="exportBtn" class="btn-sm">エクスポート</button>
+      <button id="importBtn" class="btn-sm">インポート（上書き / マージ）</button>
+      <input type="file" id="importInput" accept="application/json" style="display:none;">
+    </div>
+    <div id="dataModalFooter">
+      <button id="dataModalCloseBtn" class="btn-sm">閉じる</button>
+    </div>
+  </div>
+</div>
 
-/* 閲覧モードの中身 */
-.modal-section {
-  margin-bottom: 6px;
-}
+<!-- 外部JS -->
+<script src="js/app.js"></script>
+<script src="js/data.js"></script>
 
-/* 入力 */
-#modalInfo input,
-#modalInfo select,
-#modalInfo button,
-#modalInfo textarea {
-  font-size: 13px;
-}
 
-/* タグ一覧（モーダル内） */
-#modalTagsView,
-#modalTagsEdit {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-/* タグ管理セクション */
-#tagManageSection {
-  margin-top: 8px;
-}
-
-.section-block {
-  margin-bottom: 16px;
-  padding: 8px;
-  border-radius: 6px;
-  background: #f9f9f9;
-}
-
-.section-title {
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-#categoryList {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.category-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-}
-
-.category-row input[type="text"] {
-  flex: 1;
-}
-
-#tagManageList {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 50vh;
-  overflow-y: auto;
-}
-
-.tag-manage-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-}
-
-.tag-color-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1px solid #555;
-}
-
-/* 小さめボタン */
-.btn-sm {
-  font-size: 11px;
-  padding: 2px 6px;
-}
-
-/* タグ/作者選択モーダル */
-#tagSelectModal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  justify-content: center;
-  align-items: center;
-  z-index: 1200;
-}
-
-#tagSelectContent {
-  background: #fff;
-  color: #000;
-  width: min(480px, 95vw);
-  max-height: 90vh;
-  border-radius: 8px;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-}
-
-#tagSelectHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-#tagSelectList {
-  flex: 1;
-  overflow-y: auto;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 4px;
-}
-
-.tag-select-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 0;
-  font-size: 12px;
-}
-
-.tag-select-name {
-  flex: 1;
-}
-
-.tag-priority-stars {
-  font-size: 11px;
-  opacity: 0.8;
-}
-
-#tagSelectFooter {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-/* データ管理モーダル */
-#dataModal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  justify-content: center;
-  align-items: center;
-  z-index: 1100;
-}
-
-#dataModalContent {
-  background: #fff;
-  color: #000;
-  width: min(420px, 95vw);
-  border-radius: 8px;
-  padding: 10px;
-  font-size: 13px;
-}
-
-#dataModalFooter {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
-}
+</body>
+</html>
