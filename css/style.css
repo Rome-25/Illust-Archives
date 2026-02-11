@@ -1,7 +1,9 @@
 html {
   -webkit-text-size-adjust: 100%;
 }
-
+input, select, button {
+  font-size: 16px;
+}
 /* ============================
    全体
 ============================ */
@@ -295,3 +297,12 @@ h1 {
 #scrollBottomBtn {
   bottom: 70px;
 }
+
+
+body {
+  touch-action: manipulation;
+}
+#modal, #tagSelectModal, #dataModal {
+  -webkit-overflow-scrolling: touch;
+}
+
